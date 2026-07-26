@@ -36,20 +36,19 @@ export async function uploadMusic(
 }
 
 export async function getTracks() {
-  try {
-    const { data, error } = await supabase
-      .from("tracks")
-      .select("*")
-      .order("createdAt", { ascending: false });
+  const { data, error } = await supabase
+  .from("tracks")
+  .select("*");
 
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error("Error fetching tracks:", err);
-    return [];
+  console.log("DATA:", data);
+  console.log(JSON.stringify(error, null, 2));
+
+  if (error) {
+    throw error;
   }
-}
 
+  return data ?? [];
+}
 export async function saveTrack(track: {
   title: string;
   artist: string;
@@ -63,7 +62,7 @@ export async function saveTrack(track: {
       .insert([
         {
           ...track,
-          createdAt: new Date(),
+          created_at: new Date().toISOString(),
         },
       ])
       .select();
