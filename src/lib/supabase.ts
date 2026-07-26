@@ -78,12 +78,22 @@ export async function saveTrack(track: {
 
 export async function deleteTrack(id: string) {
   try {
-    const { error } = await supabase.from("tracks").delete().eq("id", id);
+    const { error } = await supabase
+      .from("tracks")
+      .delete()
+      .eq("id", id);
+
     if (error) throw error;
-    return true;
+
+    return {
+      success: true,
+      error: null,
+    };
   } catch (err) {
-    console.error("Error deleting track:", err);
-    return false;
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 

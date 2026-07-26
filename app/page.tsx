@@ -145,7 +145,7 @@ export default function Home() {
 
     setIsDeleting(true);
     setUploadError(null);
-    const result = await deleteTrack(track);
+    const result = await deleteTrack(track.id);
 
     if (!result.success) {
       setUploadError(`Could not delete track: ${result.error ?? "Unknown error"}`);
@@ -171,7 +171,9 @@ export default function Home() {
 
     setIsDeleting(true);
     setUploadError(null);
-    const results = await Promise.all(tracks.map(deleteTrack));
+    const results = await Promise.all(
+      tracks.map((track) => deleteTrack(track.id))
+    );
     const failedCount = results.filter((result) => !result.success).length;
 
     if (failedCount > 0) {
