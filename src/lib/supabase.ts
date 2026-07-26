@@ -2,16 +2,31 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+let supabase: any = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getSupabaseClient() {
+  if (supabase) return supabase;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("Supabase credentials not configured");
+    return null;
+  }
+
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  return supabase;
+}
+
+export { getSupabaseClient };
 
 // Helper functions
 export async function uploadMusic(
   file: File
 ): Promise<{ url: string; error?: string }> {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const client = getSupabaseClient();
+  if (!client) {
     return { url: "", error: "Supabase not configured" };
   }
 
@@ -19,13 +34,13 @@ export async function uploadMusic(
     const timestamp = Date.now();
     const filename = `${timestamp}-${file.name}`;
 
-    const { data, error } = await supabase.storage
+    const { data, error } = await client.storage
       .from("music")
       .upload(`uploads/${filename}`, file);
 
     if (error) throw error;
 
-    const { data: publicUrl } = supabase.storage
+    const { data: publicUrl } = client.storage
       .from("music")
       .getPublicUrl(`uploads/${filename}`);
 
@@ -36,19 +51,22 @@ export async function uploadMusic(
 }
 
 export async function getTracks() {
-  const { data, error } = await supabase
-  .from("tracks")
-  .select("*");
+  const client = getSupabaseClient();
+  if (!client) return [];
 
-  console.log("DATA:", data);
-  console.log(JSON.stringify(error, null, 2));
+  try {
+    const { data, error } = await client
+      .from("tracks")
+      .select("*");
 
-  if (error) {
-    throw error;
+    if (error) throw error;
+    return data ?? [];
+  } catch (err) {
+    console.error("Error fetching tracks:", err);
+    return [];
   }
-
-  return data ?? [];
 }
+
 export async function saveTrack(track: {
   title: string;
   artist: string;
@@ -56,8 +74,11 @@ export async function saveTrack(track: {
   duration: number;
   source: "upload" | "youtube";
 }) {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("tracks")
       .insert([
         {
@@ -76,18 +97,18 @@ export async function saveTrack(track: {
 }
 
 export async function deleteTrack(id: string) {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: "Not configured" };
+
   try {
-    const { error } = await supabase
+    const { error } = await client
       .from("tracks")
       .delete()
       .eq("id", id);
 
     if (error) throw error;
 
-    return {
-      success: true,
-      error: null,
-    };
+    return { success: true, error: null };
   } catch (err) {
     return {
       success: false,
@@ -100,13 +121,16 @@ export async function savePlaylist(playlist: {
   name: string;
   trackIds: string[];
 }) {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("playlists")
       .insert([
         {
           ...playlist,
-          createdAt: new Date(),
+          created_at: new Date().toISOString(),
         },
       ])
       .select();
@@ -120,11 +144,14 @@ export async function savePlaylist(playlist: {
 }
 
 export async function getPlaylists() {
+  const client = getSupabaseClient();
+  if (!client) return [];
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("playlists")
       .select("*")
-      .order("createdAt", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
     return data || [];
